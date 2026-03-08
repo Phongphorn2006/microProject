@@ -1,0 +1,17 @@
+MICROPROJECT
+│
+├── data
+│   └── index.html        ← frontend
+│
+├── include               ← header files
+│   ├── wifi_manager.h
+│   ├── web_server.h
+│   └── websocket_handler.h
+│
+├── src
+│   ├── main.cpp
+│   ├── wifi_manager.cpp
+│   ├── web_server.cpp
+│   └── websocket_handler.cpp
+│
+└── platformio.ini
