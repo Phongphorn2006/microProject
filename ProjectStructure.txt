@@ -1,17 +1,52 @@
-MICROPROJECT
+MICROPROJECT/
 │
-├── data
-│   └── index.html        ← frontend
+├── .pio/                        ← PlatformIO build cache (auto-generated)
+├── .vscode/                     ← VS Code settings
 │
-├── include               ← header files
-│   ├── wifi_manager.h
-│   ├── web_server.h
-│   └── websocket_handler.h
+├── data/                        ← LittleFS filesystem
+│   └── index.html               ← Dashboard หน้าเว็บ (upload แยกด้วย uploadfs)
 │
-├── src
-│   ├── main.cpp
-│   ├── wifi_manager.cpp
-│   ├── web_server.cpp
-│   └── websocket_handler.cpp
+├── include/                     ← Header files (.h)
+│   ├── config.h                 ← Pin mapping, WiFi, constants ทั้งหมด
+│   ├── display.h                ← LCD interface
+│   ├── encoder.h                ← Rotary encoder interface
+│   ├── fan.h                    ← Fan PWM interface
+│   ├── strobe.h                 ← IR interrupt + StrobeTask + shared variables
+│   └── websocket.h              ← WebSocket + HTTP server interface
 │
-└── platformio.ini
+├── src/                         ← Source files (.cpp)
+│   ├── main.cpp                 ← setup() + loop() เท่านั้น
+│   ├── display.cpp              ← LCD logic
+│   ├── encoder.cpp              ← ENC1/ENC2 rotate + switch
+│   ├── fan.cpp                  ← PWM 3-zone mapping
+│   ├── strobe.cpp               ← IR ISR + StrobeTask (Core 0)
+│   └── websocket.cpp            ← WS handler + HTTP serve from LittleFS
+│
+└── platformio.ini               ← Board, framework, lib_deps, filesystem
+
+Dependency ระหว่าง module:
+    main.cpp
+    ├── fan.h        → fan.cpp
+    ├── strobe.h     → strobe.cpp   (owns shared vars: isAutoMode, currentFreq etc.)
+    ├── encoder.h    → encoder.cpp  → depends on strobe.h, fan.h, display.h
+    ├── display.h    → display.cpp
+    └── websocket.h  → websocket.cpp → depends on strobe.h, fan.h, display.h
+
+    data/index.html   ← served by websocket.cpp via LittleFS (runtime)
+
+
+platformio.ini ที่ควรมี:
+    [env:esp32dev]
+    platform  = espressif32
+    board     = esp32dev
+    framework = arduino
+    board_build.filesystem = littlefs
+    lib_deps =
+        Links2004/WebSockets
+        bblanchon/ArduinoJson
+        marcoschwartz/LiquidCrystal_I2C
+
+คำสั่ง deploy:
+    pio run -t erase          # ล้าง flash ทั้งหมด
+    pio run --target uploadfs # อัปโหลด data/ → LittleFS upload flash memory
+    pio run --target upload   # อัปโหลด firmware
