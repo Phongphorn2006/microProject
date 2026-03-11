@@ -27,21 +27,28 @@ void strobeInit()
 void strobeStartTask()
 {
     attachInterrupt(digitalPinToInterrupt(IR_PIN), onIrPulse, FALLING);
-    xTaskCreatePinnedToCore(StrobeTask, "StrobeTask", 10000, NULL, 2,
-                            &StrobeTaskHandle, 0);
+    xTaskCreatePinnedToCore(
+        StrobeTask,   // ฟังก์ชันที่จะรัน
+        "StrobeTask", // ชื่อ task
+        10000,        // stack size (bytes)
+        NULL,         // parameter
+        2,            // priority (สูงกว่า loop = 1)
+        &StrobeTaskHandle,
+        0 // Core 0
+    );
+    // loop() รันบน Core 1 โดย Arduino framework อัตโนมัติ
 }
 
 // ── IR Interrupt ─────────────────────────────
+// ISR — ทำงานทันทีเมื่อ IR ตรวจจับใบพัด
 void IRAM_ATTR onIrPulse()
 {
     unsigned long now = micros();
     if (now - lastIrTime < IR_DEBOUNCE_US)
         return;
-
     irInterval = now - lastIrTime;
     lastIrTime = now;
     newPulse = true;
-
     if (isAutoMode)
     {
         int frame = currentFrame;
@@ -55,6 +62,7 @@ void IRAM_ATTR onIrPulse()
         }
         else
         {
+            // ส่งสัญญาณให้ StrobeTask บน Core 0
             portENTER_CRITICAL_ISR(&strobeMux);
             firePending = true;
             targetFrame = frame;
@@ -120,10 +128,11 @@ void StrobeTask(void *pvParameters)
 
             if (doFire && interval > 0)
             {
+
                 unsigned long waitUntil = irTime + (interval / NUM_FRAMES) * frame;
                 while (micros() < waitUntil)
                 {
-                }
+                } // busy-wait แม่นยำ
                 digitalWrite(STROBE_PIN, HIGH);
                 delayMicroseconds(STROBE_DURATION_US);
                 digitalWrite(STROBE_PIN, LOW);

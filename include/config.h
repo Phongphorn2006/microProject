@@ -1,5 +1,4 @@
 #pragma once
-
 // ==========================================
 // Pin Mapping
 // ==========================================
@@ -38,3 +37,4 @@
 #define FAN_PWM_BITS 8
 #define BROADCAST_INTERVAL 500 // ms
 #define FAN_TIMEOUT_US 500000  // µs → หยุดหมุน
+#define FAN_STEP_DELAY 10 // ms blocking

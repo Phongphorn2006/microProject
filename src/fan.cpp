@@ -28,3 +28,25 @@ void fanSetPercent(int percent)
     fanPercent = constrain(percent, 0, 100);
     ledcWrite(0, fanGetPWM(fanPercent));
 }
+
+
+void fanSoftStart(int targetPercent, int stepDelayMs) {
+    targetPercent = constrain(targetPercent, 0, 100);
+
+    // เริ่มจาก % ปัจจุบัน ค่อยๆ ขึ้นไปถึง target
+    int start = fanPercent;
+
+    if (start < targetPercent) {
+        for (int p = start; p <= targetPercent; p++) {
+            ledcWrite(0, fanGetPWM(p));
+            delay(stepDelayMs);   // หน่วงแต่ละ step
+        }
+    } else {
+        for (int p = start; p >= targetPercent; p--) {
+            ledcWrite(0, fanGetPWM(p));
+            delay(stepDelayMs);
+        }
+    }
+
+    fanPercent = targetPercent;
+}

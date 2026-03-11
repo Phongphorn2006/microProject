@@ -1,6 +1,6 @@
 #include "encoder.h"
 #include "strobe.h"   // isAutoMode, manualFreq, animSpeed, frameAdvanceMs
-#include "fan.h"      // fanSetPercent, fanPercent
+#include "fan.h"      // fanSetPercent, fanPercent,fanSoftStart
 #include "display.h"  // lcdClear, lcdPrint
 
 static int lastClk1 = HIGH;
@@ -60,7 +60,7 @@ void encoderUpdate() {
     if (sw2 == LOW  && lastSw2 == HIGH) sw2PressTime = millis();
     if (sw2 == HIGH && lastSw2 == LOW && millis() - sw2PressTime >= 50) {
         int next = constrain((fanPercent + 10) % 110, 0, 100);
-        fanSetPercent(next);
+        fanSoftStart(next,FAN_STEP_DELAY);
     }
     lastSw2 = sw2;
 }

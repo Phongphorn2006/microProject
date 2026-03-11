@@ -28,7 +28,7 @@ static void onWsEvent(uint8_t clientNum, WStype_t type,
             if (val >= 1.0f && val <= 250.0f) manualFreq = val;
             isAutoMode = false;
         } else if (strcmp(cmd, "fan") == 0) {
-            fanSetPercent(doc["value"].as<int>());
+            fanSoftStart(doc["value"].as<int>(),FAN_STEP_DELAY);
         } else if (strcmp(cmd, "anim") == 0) {
             animSpeed      = constrain(doc["value"].as<int>(), 1, 20);
             frameAdvanceMs = (unsigned long)(animSpeed * 40);
