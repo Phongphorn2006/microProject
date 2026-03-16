@@ -18,7 +18,7 @@
 // Wi-Fi
 // ==========================================
 #define WIFI_SSID "@JumboPlusIoT"
-#define WIFI_PASS "y3l5cfiq"
+#define WIFI_PASS "ztto17vb"
 
 // ==========================================
 // WebServer / WebSocket ports
@@ -38,3 +38,22 @@
 #define BROADCAST_INTERVAL 500 // ms
 #define FAN_TIMEOUT_US 500000  // µs → หยุดหมุน
 #define FAN_STEP_DELAY 10 // ms blocking
+
+// ==========================================
+// ── MQTT ──
+// ==========================================
+#define MQTT_BROKER     "broker.hivemq.com"
+#define MQTT_PORT       1883
+#define MQTT_CLIENT_ID  "zoetrope_019"
+
+// Publish
+#define TOPIC_RPM       "zoetrope/sensor/rpm"
+#define TOPIC_HZ        "zoetrope/light/hz"
+#define TOPIC_MODE      "zoetrope/status/mode"
+#define TOPIC_FAN       "zoetrope/status/fan"
+
+// Subscribe
+#define TOPIC_SUB_MODE  "zoetrope/control/mode"
+#define TOPIC_SUB_HZ    "zoetrope/control/hz"
+#define TOPIC_SUB_FAN   "zoetrope/control/fan"
+#define TOPIC_SUB_ANIM  "zoetrope/control/animspeed"

@@ -39,7 +39,7 @@ void strobeStartTask()
     // loop() รันบน Core 1 โดย Arduino framework อัตโนมัติ
 }
 
-// ── IR Interrupt ─────────────────────────────
+// ── IR Interrupt ────────────────
 // ISR — ทำงานทันทีเมื่อ IR ตรวจจับใบพัด
 void IRAM_ATTR onIrPulse()
 {
@@ -80,6 +80,8 @@ void StrobeTask(void *pvParameters)
     {
         if (!isAutoMode)
         {
+
+            // อ่าน currentFreq อย่างปลอดภัยจาก Core 1
             portENTER_CRITICAL(&strobeMux);
             float freq = currentFreq;
             portEXIT_CRITICAL(&strobeMux);
@@ -88,57 +90,76 @@ void StrobeTask(void *pvParameters)
             {
                 unsigned long now = micros();
                 unsigned long intervalMicros = (unsigned long)(1000000.0f / freq);
+                // เช่น freq = 30Hz → interval = 33,333 µs
 
                 if (now - previousStrobeMicros >= intervalMicros)
                 {
+
+                    // ถ้าเลยกำหนดไปมากกว่า 2 เท่า (เช่น task ถูกบล็อกนาน)
+                    // reset เวลาใหม่เลย แทนที่จะยิงชดเชยหลายครั้ง
                     previousStrobeMicros = (now - previousStrobeMicros > intervalMicros * 2)
-                                               ? now
-                                               : previousStrobeMicros + intervalMicros;
+                                               ? now                                    // reset
+                                               : previousStrobeMicros + intervalMicros; // เลื่อน 1 interval
+
+                    // ยิง strobe
                     digitalWrite(STROBE_PIN, HIGH);
-                    delayMicroseconds(STROBE_DURATION_US);
+                    delayMicroseconds(STROBE_DURATION_US); // 100 µs
                     digitalWrite(STROBE_PIN, LOW);
                 }
                 else
                 {
+                    // ยังไม่ถึงเวลา — ถ้าเหลืออีก > 2ms ให้คืน CPU แทนที่จะ busy-wait
+                    // ป้องกัน Core 0 กิน CPU 100% โดยเปล่าประโยชน์
                     if (intervalMicros - (now - previousStrobeMicros) > 2000)
-                        vTaskDelay(1);
+                        vTaskDelay(1); // หยุด 1 tick (~1ms) แล้วกลับมาเช็คใหม่
                 }
             }
             else
             {
-                vTaskDelay(10);
+                vTaskDelay(10); // freq ต่ำเกินไป ไม่ยิง รอ 10ms
             }
         }
         else
         {
+            // รับข้อมูลจาก ISR ที่ส่งมาผ่านตัวแปร shared
             bool doFire = false;
             int frame = 0;
             unsigned long interval = 0, irTime = 0;
 
+            // อ่านและล้าง firePending ในครั้งเดียว ป้องกัน race condition
             portENTER_CRITICAL(&strobeMux);
             if (firePending)
             {
                 doFire = true;
-                firePending = false;
-                frame = targetFrame;
-                interval = irInterval;
-                irTime = lastIrTime;
+                firePending = false;   // ล้างทันที ป้องกันยิงซ้ำ
+                frame = targetFrame;   // frame ที่ ISR ส่งมา (0–6)
+                interval = irInterval; // ระยะเวลา 1 รอบพัดลม (µs)
+                irTime = lastIrTime;   // เวลาที่ IR pulse เกิดขึ้น
             }
             portEXIT_CRITICAL(&strobeMux);
 
             if (doFire && interval > 0)
             {
-
+                // คำนวณเวลาที่ต้องยิง
+                // แบ่ง 1 รอบเป็น NUM_FRAMES ช่วง แล้วเลือกช่วงของ frame นั้น
+                // เช่น interval=10,000µs, frame=3, NUM_FRAMES=7
+                // → waitUntil = irTime + (10000/7)*3 = irTime + 4,285µs
                 unsigned long waitUntil = irTime + (interval / NUM_FRAMES) * frame;
+
+                // busy-wait แม่นยำระดับ µs
+                // ไม่ใช้ delay() เพราะ resolution ไม่พอ
                 while (micros() < waitUntil)
                 {
-                } // busy-wait แม่นยำ
+                }
+
+                // ยิง strobe ตรงตำแหน่ง frame
                 digitalWrite(STROBE_PIN, HIGH);
-                delayMicroseconds(STROBE_DURATION_US);
+                delayMicroseconds(STROBE_DURATION_US); // 100 µs
                 digitalWrite(STROBE_PIN, LOW);
             }
             else
             {
+                // ยังไม่มี pulse ใหม่จาก IR → คืน CPU รอ 1 tick
                 vTaskDelay(1);
             }
         }
